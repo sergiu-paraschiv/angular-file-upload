@@ -17,7 +17,7 @@ var app = angular.module('angularFileUpload', []);
 /**
  * The angular file upload module
  * @author: nerv
- * @version: 0.2.7.1, 2012-10-15
+ * @version: 0.2.7, 2012-10-06
  */
 
 // It is attached to an element that catches the event drop file
@@ -57,7 +57,7 @@ app.directive('ngFileDrop', function () {
 /**
  * The angular file upload module
  * @author: nerv
- * @version: 0.2.7.1, 2012-10-15
+ * @version: 0.2.7, 2012-10-06
  */
 
 // It is attached to an element which will be assigned to a class "ng-file-over" or ng-file-over="className"
@@ -78,7 +78,7 @@ app.directive('ngFileOver', function () {
 /**
  * The angular file upload module
  * @author: nerv
- * @version: 0.2.7.1, 2012-10-15
+ * @version: 0.2.7, 2012-10-06
  */
 
 // It is attached to <input type="file"> element like <ng-file-select="options">
@@ -92,7 +92,7 @@ app.directive('ngFileSelect', function () {
             }
 
             element.bind('change', function () {
-                scope.$emit('file:add', this.files ? this.files : this, scope.$eval(attributes.ngFileSelect));
+                scope.$emit('file:add', this.files ? this.files : this, scope.$eval(attributes.ngFileSelect), attributes.fileUploadId);
                 window.File && element.prop('value', null);
             });
         }
@@ -101,7 +101,7 @@ app.directive('ngFileSelect', function () {
 /**
  * The angular file upload module
  * @author: nerv
- * @version: 0.2.7.1, 2012-10-15
+ * @version: 0.2.7, 2012-10-06
  */
 
 app.factory('$fileUploader', [ '$compile', '$rootScope', function ($compile, $rootScope) {
@@ -109,6 +109,7 @@ app.factory('$fileUploader', [ '$compile', '$rootScope', function ($compile, $ro
 
     function Uploader(params) {
         angular.extend(this, {
+            id: null,
             scope: $rootScope,
             url: '/',
             alias: 'file',
@@ -129,9 +130,11 @@ app.factory('$fileUploader', [ '$compile', '$rootScope', function ($compile, $ro
         // add the base filter
         this.filters.unshift(this._filter);
 
-        $rootScope.$on('file:add', function (event, items, options) {
-            event.stopPropagation();
-            this.addToQueue(items, options);
+        $rootScope.$on('file:add', function (event, items, options, id) {
+            if (this.id === id) {
+                event.stopPropagation();
+                this.addToQueue(items, options);
+            }
         }.bind(this));
 
         this.bind('beforeupload', Item.prototype._beforeupload);
@@ -162,7 +165,6 @@ app.factory('$fileUploader', [ '$compile', '$rootScope', function ($compile, $ro
          */
         bind: function (event, handler) {
             this._observer.$on(this._timestamp + ':' + event, handler.bind(this));
-            return this;
         },
 
         /**
@@ -174,7 +176,6 @@ app.factory('$fileUploader', [ '$compile', '$rootScope', function ($compile, $ro
             var params = Array.prototype.slice.call(arguments, 1);
             params.unshift(this._timestamp + ':' + event);
             this._observer.$emit.apply(this._observer, params);
-            return this;
         },
 
         /**
@@ -219,7 +220,6 @@ app.factory('$fileUploader', [ '$compile', '$rootScope', function ($compile, $ro
                 this.trigger('changedqueue', this.queue);
             }
             this.autoUpload && this.uploadAll();
-            return this;
         },
 
         /**
@@ -231,7 +231,6 @@ app.factory('$fileUploader', [ '$compile', '$rootScope', function ($compile, $ro
             var item = this.queue.splice(index, 1)[ 0 ];
             item.file._form && item.file._form.remove();
             this.trigger('changedqueue', item);
-            return this;
         },
 
         /**
@@ -243,7 +242,6 @@ app.factory('$fileUploader', [ '$compile', '$rootScope', function ($compile, $ro
             }, this);
             this.queue.length = 0;
             this.trigger('changedqueue', this.queue);
-            return this;
         },
 
         /**
@@ -271,7 +269,7 @@ app.factory('$fileUploader', [ '$compile', '$rootScope', function ($compile, $ro
          */
         uploadItem: function (value) {
             if (this.isUploading) {
-                return this;
+                return;
             }
 
             var index = angular.isObject(value) ? this.getIndexOfItem(value) : value;
@@ -279,14 +277,12 @@ app.factory('$fileUploader', [ '$compile', '$rootScope', function ($compile, $ro
             var transport = item.file._form ? '_iframeTransport' : '_xhrTransport';
             this.isUploading = true;
             this[ transport ](item);
-            return this;
         },
 
         uploadAll: function () {
             var item = this.getNotUploadedItems()[ 0 ];
             this._uploadNext = !!item;
             this._uploadNext && this.uploadItem(item);
-            return this;
         },
 
         /**
